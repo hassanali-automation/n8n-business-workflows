@@ -1,0 +1,283 @@
+{
+  "name": "YT Shorts AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -64,
+        0
+      ],
+      "id": "1233fc3d-26ca-4032-ac75-ad56202282c6",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.previous_titles }}",
+        "options": {
+          "systemMessage": "You are a creative director and scriptwriter for a YouTube Shorts channel about surprising fun facts (\"Did you know?\").\n\nEvery time you run, choose ONE new, true and genuinely surprising fun fact from a random topic (science, animals, space, history, human body, food, or the ocean).\n\nStrict rules:\n- The fact must be well-documented and widely confirmed. If you are not sure a fact is true, choose a different one.\n- The TITLE must honestly match the SCRIPT. Never use a title that says something the script does not say. No false claims and no clickbait that misleads.\n- Do not use very common facts (like \"honey never spoils\" or \"octopuses have three hearts\").\n- Do not compare things unless the comparison is exactly true.\n\nWrite a script that can be spoken in under 25 seconds. Start with a strong hook in the first sentence, then explain the fact simply, then end with a short closing line.\n\nReply ONLY in this exact format, with no extra words, no markdown, no bold, and no bullet points:\n\nTITLE: (catchy but honest title under 60 characters)\nSCRIPT: (the narration text, plain sentences only)\nVIDEO_PROMPT: (a detailed cinematic vertical 9:16 video description that visually matches the fact, in one paragraph)\nDESCRIPTION: (two short sentences for the YouTube description)\nHASHTAGS: (5 hashtags separated by spaces, must include #shorts)\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        0
+      ],
+      "id": "12155350-270c-4ff3-bff8-8cd798871b17",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        208
+      ],
+      "id": "ad3bcc76-438b-4c4a-8f2a-a904d0a22254",
+      "name": "Google Gemini Chat Model"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output || '';\nconst text = raw.replace(/\\\\n/g, '\\n');\n\nconst labels = ['TITLE', 'SCRIPT', 'VIDEO_PROMPT', 'DESCRIPTION', 'HASHTAGS'];\n\nfunction getField(name) {\n  const others = labels.filter(l => l !== name).join('|');\n  const re = new RegExp(name + ':\\\\s*([\\\\s\\\\S]*?)\\\\s*(?=(?:' + others + '):|$)');\n  const match = text.match(re);\n  return match ? match[1].trim() : '';\n}\n\nreturn [{\n  json: {\n    title: getField('TITLE'),\n    script: getField('SCRIPT'),\n    video_prompt: getField('VIDEO_PROMPT'),\n    description: getField('DESCRIPTION'),\n    hashtags: getField('HASHTAGS'),\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "ebd01377-e337-4c3a-8239-b55e9dda44e6",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "YOUR_DATA_TABLE_ID",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $json.title }}",
+            "script": "={{ $json.script }}",
+            "video_prompt": "={{ $json.video_prompt }}",
+            "description": "={{ $json.description }}",
+            "hashtags": "={{ $json.hashtags }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "script",
+              "displayName": "script",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "video_prompt",
+              "displayName": "video_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "hashtags",
+              "displayName": "hashtags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "c143724d-e560-4167-90da-3f4c32ec67df",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "YOUR_DATA_TABLE_ID",
+          "mode": "list"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        0
+      ],
+      "id": "e2aa0fa4-604a-4c9d-881c-e329d2ed9b7e",
+      "name": "Get row(s)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const titles = $input.all()\n  .map(item => item.json.title)\n  .filter(t => t);\n\nreturn [{\n  json: {\n    previous_titles: titles.length ? titles.join(' | ') : 'none yet'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        0
+      ],
+      "id": "a4e28278-fa26-470a-b1a0-225f0422c744",
+      "name": "Collect Titles"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=New Short idea ready!\n\nTitle: {{ $json.title }}\n\nScript: {{ $json.script }}\n\nVideo prompt: {{ $json.video_prompt }}\n\nDescription: {{ $json.description }}\n\nHashtags: {{ $json.hashtags }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        0
+      ],
+      "id": "78e6722b-353d-4598-a739-ceed456518ed",
+      "name": "Discord"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Collect Titles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Titles": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "active": false
+}
